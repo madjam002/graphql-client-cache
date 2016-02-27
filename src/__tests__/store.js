@@ -301,6 +301,104 @@ describe('Store', function () {
       })
     })
 
+    it('should work with fragments and inline fragments', function () {
+      const query = parse(`
+        query {
+          todos {
+            totalCount
+            edges {
+              node {
+                ...todo
+              }
+            }
+          }
+        }
+
+        fragment todo on Todo {
+          id
+          author {
+            ...on User {
+              id
+              name
+            }
+          }
+          label
+        }
+      `)
+
+      const result = {
+        todos: {
+          totalCount: 3,
+          edges: [{
+            node: {
+              id: '3',
+              author: {
+                id: '10',
+                name: 'John Smith',
+              },
+              label: 'Test 1',
+            },
+          }, {
+            node: {
+              id: '4',
+              author: {
+                id: '10',
+                name: 'John Smith',
+              },
+              label: 'Test 2',
+            },
+          }],
+        },
+      }
+
+      const updatedStore = this.store.acceptQueryResult(result, query, {}, { schema })
+
+      expect(updatedStore.toJS()).to.eql({
+        nodes: {
+          ...this.initialNodes,
+          '3': {
+            id: '3',
+            author: {
+              id: '10',
+              _type: 'NodeReference',
+            },
+            label: 'Test 1',
+          },
+          '4': {
+            id: '4',
+            author: {
+              id: '10',
+              _type: 'NodeReference',
+            },
+            label: 'Test 2',
+          },
+          '10': {
+            id: '10',
+            name: 'John Smith',
+          },
+        },
+        data: {
+          todos: {
+            totalCount: 3,
+            pageInfo: {
+              hasNextPage: false,
+            },
+            edges: [{
+              node: {
+                id: '3',
+                _type: 'NodeReference',
+              },
+            }, {
+              node: {
+                id: '4',
+                _type: 'NodeReference',
+              },
+            }],
+          },
+        },
+      })
+    })
+
   })
 
   describe('query', function () {

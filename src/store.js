@@ -21,10 +21,10 @@ function isNode(type, data) {
   return id != null
 }
 
-function getDataForStore(query, variables, inData, schema, typeInfo) {
+function getDataForStore(query, ast, variables, inData, schema, typeInfo) {
   const nodes = {}
 
-  const data = visitAndMapImmutable(query, variables, inData, ({ objectTree, typeInfo, useKey }) =>
+  const data = visitAndMapImmutable(query, ast, variables, inData, ({ objectTree, typeInfo, useKey }) =>
     node => {
       const data = objectTree.getCurrent()
       const type = typeInfo.getType()
@@ -33,7 +33,7 @@ function getDataForStore(query, variables, inData, schema, typeInfo) {
       useKey(key)
 
       if (isNode(type, data)) {
-        const nodeData = getDataForStore(node.selectionSet, variables, data, schema, typeInfo)
+        const nodeData = getDataForStore(query, node.selectionSet, variables, data, schema, typeInfo)
         nodes[data.id] = nodeData.data
         Object.assign(nodes, nodeData.nodes)
         return new NodeReference({ id: data.id })
@@ -48,8 +48,8 @@ function getDataForStore(query, variables, inData, schema, typeInfo) {
   return { data, nodes }
 }
 
-function queryStore(store, query, variables, data, schema, typeInfo) {
-  return visitAndMap(query, variables, data, ({ objectTree, typeInfo, useKey }) =>
+function queryStore(store, query, ast, variables, data, schema, typeInfo) {
+  return visitAndMap(query, ast, variables, data, ({ objectTree, typeInfo, useKey }) =>
     node => {
       const data = objectTree.getCurrent()
       const type = typeInfo.getType()
@@ -59,7 +59,7 @@ function queryStore(store, query, variables, data, schema, typeInfo) {
       }
 
       if (isNode(type, data)) {
-        return queryStore(store, node.selectionSet, variables, store.getNode(data.get('id')), schema, typeInfo)
+        return queryStore(store, query, node.selectionSet, variables, store.getNode(data.get('id')), schema, typeInfo)
       }
 
       if (isLeafType(typeInfo.getType())) {
@@ -75,7 +75,7 @@ export default class Store extends StoreRecord {
     const newStore = this.asMutable()
     const typeInfo = new TypeInfo(schema)
 
-    const { nodes, data } = getDataForStore(query, variables, result, schema, typeInfo)
+    const { nodes, data } = getDataForStore(query, query, variables, result, schema, typeInfo)
 
     newStore.set('data', newStore.get('data').mergeDeep(
       data,
@@ -88,7 +88,7 @@ export default class Store extends StoreRecord {
 
   query(query, variables, { schema }) {
     const typeInfo = new TypeInfo(schema)
-    const data = queryStore(this, query, variables, this.data, schema, typeInfo)
+    const data = queryStore(this, query, query, variables, this.data, schema, typeInfo)
 
     return data
   }

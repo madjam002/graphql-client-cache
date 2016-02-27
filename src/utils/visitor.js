@@ -1,5 +1,5 @@
 import {TypeInfo} from 'graphql/utilities'
-import {visit} from 'graphql/language'
+import {visit, Kind} from 'graphql/language'
 import {visitWithTypeInfo} from 'graphql/language/visitor'
 import {GraphQLList} from 'graphql/type'
 import Immutable from 'immutable'
@@ -28,7 +28,7 @@ export function visitWithTypesAndTree(ast, tree, visitorFn, { schema }) {
   return visitTree(visitor, ast, objectTree, typeInfo)
 }
 
-export function visitAndMapImmutable(ast, variables, tree, mapFnFactory, { schema, typeInfo, objectTree, dataType }) {
+export function visitAndMapImmutable(query, ast, variables, tree, mapFnFactory, { schema, typeInfo, objectTree, dataType }) {
   if (!typeInfo) typeInfo = new TypeInfo(schema)
   if (!objectTree) objectTree = new ObjectTree(tree, ast, variables, dataType)
   const builder = new ImmutableBuilder(objectTree, typeInfo)
@@ -47,6 +47,16 @@ export function visitAndMapImmutable(ast, variables, tree, mapFnFactory, { schem
         builder.leave(node)
       },
     },
+    FragmentSpread: {
+      enter(node) {
+        const name = node.name.value
+        const fragments = query.definitions.filter(def => def.name && def.name.value === name)
+
+        if (fragments.length > 0) {
+          return fragments[0].selectionSet
+        }
+      },
+    },
     enterIndex(index) {
       builder.enterIndex(index)
     },
@@ -60,14 +70,18 @@ export function visitAndMapImmutable(ast, variables, tree, mapFnFactory, { schem
   return builder.get()
 }
 
-export function visitAndMap(ast, variables, tree, mapFnFactory, opts) {
-  return visitAndMapImmutable(ast, variables, tree, mapFnFactory, opts).toJS()
+export function visitAndMap(query, ast, variables, tree, mapFnFactory, opts) {
+  return visitAndMapImmutable(query, ast, variables, tree, mapFnFactory, opts).toJS()
 }
 
 export function visitWithTree(visitor, typeInfo, objectTree) {
   return {
     enter(node) {
       const subTree = objectTree.enter(node)
+
+      if (node.kind === Kind.FRAGMENT_DEFINITION) {
+        return false
+      }
 
       const currentType = typeInfo.getType()
 

@@ -51,7 +51,7 @@ export class ImmutableBuilder {
 
     this.nextKey = null
 
-    if (!mapRes && !isLeafType(type)) {
+    if (mapRes === undefined && !isLeafType(type)) {
       if ((Array.isArray(data) || Immutable.List.isList(data)) && type instanceof GraphQLList) {
         curr.set(key, Immutable.List().asMutable())
         this.push(key, curr.get(key))

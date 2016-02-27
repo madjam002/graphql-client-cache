@@ -138,7 +138,89 @@ describe('visitAndMapImmutable', function () {
   })
 
   it('should walk the tree with data and return an immutable map', function () {
-    const result = visitAndMapImmutable(this.query, {}, this.tree, ({ objectTree, typeInfo }) =>
+    const result = visitAndMapImmutable(this.query, this.query, {}, this.tree, ({ objectTree, typeInfo }) =>
+      node => {
+        const data = objectTree.getCurrent()
+
+        if (isLeafType(typeInfo.getType())) {
+          return data
+        }
+      }
+    , { schema })
+
+    expect(result.toJS()).to.eql({
+      todos: this.tree.todos,
+    })
+  })
+
+  it('should walk the tree with data and follow inline fragments', function () {
+    const query = parse(`
+      query {
+        todos {
+          edges {
+            node {
+              ...on Todo {
+                id
+                author {
+                  ...on User {
+                    id
+                    name
+                  }
+                }
+                label
+              }
+            }
+            cursor
+          }
+          totalCount
+        }
+      }
+    `)
+
+    const result = visitAndMapImmutable(query, query, {}, this.tree, ({ objectTree, typeInfo }) =>
+      node => {
+        const data = objectTree.getCurrent()
+
+        if (isLeafType(typeInfo.getType())) {
+          return data
+        }
+      }
+    , { schema })
+
+    expect(result.toJS()).to.eql({
+      todos: this.tree.todos,
+    })
+  })
+
+  it('should walk the tree with data and follow fragments', function () {
+    const query = parse(`
+      query {
+        todos {
+          edges {
+            node {
+              ...todo
+            }
+            cursor
+          }
+          totalCount
+        }
+      }
+
+      fragment todo on Todo {
+        id
+        author {
+          ...author
+        }
+        label
+      }
+
+      fragment author on User {
+        id
+        name
+      }
+    `)
+
+    const result = visitAndMapImmutable(query, query, {}, this.tree, ({ objectTree, typeInfo }) =>
       node => {
         const data = objectTree.getCurrent()
 
@@ -154,7 +236,7 @@ describe('visitAndMapImmutable', function () {
   })
 
   it('should walk the tree with data and respect map function result', function () {
-    const result = visitAndMapImmutable(this.query, {}, this.tree, ({ objectTree, typeInfo }) =>
+    const result = visitAndMapImmutable(this.query, this.query, {}, this.tree, ({ objectTree, typeInfo }) =>
       node => {
         const data = objectTree.getCurrent()
 
