@@ -1,7 +1,7 @@
 import Immutable from 'immutable'
 import {isLeafType} from 'graphql/type'
 import {TypeInfo} from 'graphql/utilities'
-import {visitAndMapImmutable, visitAndMap, DataTypes} from './utils/visitor'
+import {visitWithTree, visitAndMapImmutable, visitAndMap, DataTypes} from './utils/visitor'
 import {getStorageKey} from './utils/storage-key'
 
 const StoreRecord = Immutable.Record({
@@ -15,6 +15,7 @@ const NodeReference = Immutable.Record({
 })
 
 function isNode(type, data) {
+  if (!data) return false
   const id = data.get ? data.get('id') : data.id
 
   // TODO check graphql type?
@@ -62,7 +63,7 @@ function queryStore(store, query, ast, variables, data, schema, typeInfo) {
         return queryStore(store, query, node.selectionSet, variables, store.getNode(data.get('id')), schema, typeInfo)
       }
 
-      if (isLeafType(typeInfo.getType())) {
+      if (isLeafType(type)) {
         return data
       }
     }
@@ -93,6 +94,35 @@ function canFulfillQuery(store, query, ast, variables, data, schema, typeInfo) {
   , { schema, typeInfo, dataType: DataTypes.STORE_DATA })
 
   return canFulfill
+}
+
+function passThroughQuery(store, query, ast, variables, data, schema, typeInfo) {
+  return visitWithTree(query, ast, variables, data, ({ objectTree, typeInfo }) => ({
+    Field: {
+      enter(node) {
+        const data = objectTree.getCurrent()
+        const type = typeInfo.getType()
+
+        if (data != null && isLeafType(type)) {
+          return null // remove field
+        }
+
+        if (isNode(type, data)) {
+          return {
+            ...node,
+            selectionSet:
+              passThroughQuery(store, query, node.selectionSet, variables, store.getNode(data.get('id')), schema, typeInfo),
+          }
+        }
+      },
+      leave(node) {
+        // remove fields with no selection set
+        if (node.selectionSet && node.selectionSet.selections.length === 0) {
+          return null
+        }
+      },
+    },
+  }), { schema, dataType: DataTypes.STORE_DATA, typeInfo })
 }
 
 export default class Store extends StoreRecord {
@@ -126,6 +156,11 @@ export default class Store extends StoreRecord {
 
   getNode(id) {
     return this.get('nodes').get(id)
+  }
+
+  passThroughQuery(query, variables, { schema }) {
+    const typeInfo = new TypeInfo(schema)
+    return passThroughQuery(this, query, query, variables, this.data, schema, typeInfo)
   }
 
   updateNode(id, data) {

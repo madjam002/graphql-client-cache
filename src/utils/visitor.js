@@ -14,18 +14,13 @@ export function isNode(maybeNode) {
   return maybeNode && typeof maybeNode.kind === 'string'
 }
 
-export function visitWithTypes(ast, visitorFn, { schema }) {
-  const typeInfo = new TypeInfo(schema)
-  return visit(ast, visitWithTypeInfo(typeInfo, visitorFn(typeInfo)))
-}
-
-export function visitWithTypesAndTree(ast, tree, visitorFn, { schema }) {
-  const typeInfo = new TypeInfo(schema)
-  const objectTree = new ObjectTree(tree)
+export function visitWithTree(query, ast, variables, tree, visitorFn, { schema, typeInfo, dataType }) {
+  if (!typeInfo) typeInfo = new TypeInfo(schema)
+  const objectTree = new ObjectTree(tree, ast, variables, dataType)
 
   const visitor = visitorFn({ objectTree, typeInfo })
 
-  return visitTree(visitor, ast, objectTree, typeInfo)
+  return visitTree(visitor, query, ast, variables, objectTree, typeInfo)
 }
 
 export function visitAndMapImmutable(query, ast, variables, tree, mapFnFactory, { schema, typeInfo, objectTree, dataType }) {
@@ -47,14 +42,9 @@ export function visitAndMapImmutable(query, ast, variables, tree, mapFnFactory, 
         builder.leave(node)
       },
     },
-    FragmentSpread: {
+    FragmentDefinition: {
       enter(node) {
-        const name = node.name.value
-        const fragments = query.definitions.filter(def => def.name && def.name.value === name)
-
-        if (fragments.length > 0) {
-          return fragments[0].selectionSet
-        }
+        return null
       },
     },
     enterIndex(index) {
@@ -65,7 +55,7 @@ export function visitAndMapImmutable(query, ast, variables, tree, mapFnFactory, 
     },
   }
 
-  visitTree(visitor, ast, objectTree, typeInfo)
+  visitTree(visitor, query, ast, variables, objectTree, typeInfo)
 
   return builder.get()
 }
@@ -74,13 +64,20 @@ export function visitAndMap(query, ast, variables, tree, mapFnFactory, opts) {
   return visitAndMapImmutable(query, ast, variables, tree, mapFnFactory, opts).toJS()
 }
 
-export function visitWithTree(visitor, typeInfo, objectTree) {
-  return {
+export function visitTree(visitor, query, ast, variables, objectTree, typeInfo) {
+  const treeVisitor = {
     enter(node) {
       const subTree = objectTree.enter(node)
 
-      if (node.kind === Kind.FRAGMENT_DEFINITION) {
-        return false
+      if (node.kind === Kind.FRAGMENT_SPREAD) {
+        const name = node.name.value
+        const fragments = query.definitions.filter(def => def.name && def.name.value === name)
+
+        if (fragments.length > 0) {
+          const fragment = fragments[0]
+
+          visitTree(visitor, query, fragment.selectionSet, variables, objectTree, typeInfo)
+        }
       }
 
       const currentType = typeInfo.getType()
@@ -96,7 +93,7 @@ export function visitWithTree(visitor, typeInfo, objectTree) {
           objectTree.enterIndex(index)
           if (visitor.enterIndex) visitor.enterIndex(index)
 
-          visitTree(visitor, node.selectionSet, objectTree, typeInfo)
+          visitTree(visitor, query, node.selectionSet, variables, objectTree, typeInfo)
 
           if (visitor.leaveIndex) visitor.leaveIndex(index)
           objectTree.pop()
@@ -133,10 +130,6 @@ export function visitWithTree(visitor, typeInfo, objectTree) {
       return result
     },
   }
-}
-
-export function visitTree(visitor, ast, objectTree, typeInfo) {
-  const treeVisitor = visitWithTree(visitor, typeInfo, objectTree)
 
   return visit(ast, visitWithTypeInfo(typeInfo, treeVisitor))
 }
