@@ -69,6 +69,32 @@ function queryStore(store, query, ast, variables, data, schema, typeInfo) {
   , { schema, typeInfo, dataType: DataTypes.STORE_DATA })
 }
 
+function canFulfillQuery(store, query, ast, variables, data, schema, typeInfo) {
+  let canFulfill = true
+
+  visitAndMap(query, ast, variables, data, ({ objectTree, typeInfo, useKey }) =>
+    node => {
+      const data = objectTree.getCurrent()
+      const type = typeInfo.getType()
+
+      if (data == null) {
+        canFulfill = false
+        return false
+      }
+
+      if (isNode(type, data)) {
+        const nodeCan = queryStore(store, query, node.selectionSet, variables, store.getNode(data.get('id')), schema, typeInfo)
+        if (!nodeCan) {
+          canFulfill = false
+        }
+        return false
+      }
+    }
+  , { schema, typeInfo, dataType: DataTypes.STORE_DATA })
+
+  return canFulfill
+}
+
 export default class Store extends StoreRecord {
 
   acceptQueryResult(result, query, variables, { schema }) {
@@ -91,6 +117,11 @@ export default class Store extends StoreRecord {
     const data = queryStore(this, query, query, variables, this.data, schema, typeInfo)
 
     return data
+  }
+
+  canFulfillQuery(query, variables, { schema }) {
+    const typeInfo = new TypeInfo(schema)
+    return canFulfillQuery(this, query, query, variables, this.data, schema, typeInfo)
   }
 
   getNode(id) {
