@@ -22,7 +22,7 @@ export class ImmutableBuilder {
   }
 
   get() {
-    return this._tree
+    return this._tree.asImmutable()
   }
 
   getCurrent() {
@@ -31,6 +31,10 @@ export class ImmutableBuilder {
 
   getKey() {
     return this._keyStack[this._keyStack.length - 1]
+  }
+
+  useKey(key) {
+    this.nextKey = key
   }
 
   enterIndex(index) {
@@ -43,10 +47,12 @@ export class ImmutableBuilder {
     const type = this.typeInfo.getType()
     const data = this.objectTree.getCurrent()
     const curr = this.getCurrent()
-    const key = node.name.value
+    const key = this.nextKey || node.name.value
+
+    this.nextKey = null
 
     if (!mapRes && !isLeafType(type)) {
-      if (Array.isArray(data) && type instanceof GraphQLList) {
+      if ((Array.isArray(data) || Immutable.List.isList(data)) && type instanceof GraphQLList) {
         curr.set(key, Immutable.List().asMutable())
         this.push(key, curr.get(key))
       } else {

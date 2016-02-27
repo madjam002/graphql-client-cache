@@ -11,9 +11,11 @@ export class ObjectTree {
   }
 
   enterIndex(index) {
+    const current = this.getCurrent()
+
     this._index = index
     this._indexAt = this._stack.length + 1
-    this._stack.push(this.getCurrent()[index])
+    this._stack.push(current.get ? current.get(index) : current[index])
   }
 
   getIndex() {
@@ -34,7 +36,7 @@ export class ObjectTree {
       const current = this.getCurrent()
 
       if (current) {
-        const next = this.getCurrent()[node.name.value]
+        const next = current.get ? current.get(node.name.value) : current[node.name.value]
 
         this._stack.push(next)
         return next

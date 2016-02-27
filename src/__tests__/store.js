@@ -234,4 +234,187 @@ describe('Store', function () {
 
   })
 
+  describe('query', function () {
+
+    beforeEach(function () {
+      this.initialNodes = {
+        '1': {
+          id: '1',
+          label: 'Initial todo',
+          author: {
+            id: '10',
+            _type: 'NodeReference',
+          },
+        },
+        '5': {
+          id: '5',
+          label: 'Initial todo #2',
+          author: {
+            id: '10',
+            _type: 'NodeReference',
+          },
+        },
+        '10': {
+          id: '10',
+          name: 'John Smith',
+          author: {
+            id: '10',
+            _type: 'NodeReference',
+          },
+        },
+      }
+
+      this.initialEdges = [{
+        node: {
+          id: '1',
+          _type: 'NodeReference',
+        },
+      }, {
+        node: {
+          id: '5',
+          _type: 'NodeReference',
+        },
+      }]
+
+      this.initialTodos = {
+        totalCount: 1,
+        pageInfo: {
+          hasNextPage: false,
+        },
+        edges: this.initialEdges,
+      }
+
+      this.store = new Store({
+        nodes: Immutable.fromJS({
+          ...this.initialNodes,
+        }),
+        data: Immutable.fromJS({
+          todos: this.initialTodos,
+          user: {
+            id: '10',
+            _type: 'NodeReference',
+          },
+        }),
+      })
+    })
+
+    it('should query the store and return plain JS objects', function () {
+      const query = parse(`
+        query {
+          todos {
+            totalCount
+          }
+        }
+      `)
+
+      const result = this.store.query(query, {}, { schema })
+
+      expect(result).to.eql({
+        todos: {
+          totalCount: 1,
+        },
+      })
+    })
+
+    it('should query the store with nodes', function () {
+      const query = parse(`
+        query {
+          todos {
+            totalCount
+          }
+          user {
+            id
+            name
+          }
+        }
+      `)
+
+      const result = this.store.query(query, {}, { schema })
+
+      expect(result).to.eql({
+        todos: {
+          totalCount: 1,
+        },
+        user: {
+          id: '10',
+          name: 'John Smith',
+        },
+      })
+    })
+
+    it('should respect aliases in the query', function () {
+      const query = parse(`
+        query {
+          todos {
+            theTotalCount: totalCount
+          }
+          wooUser: user {
+            id
+            fullName: name
+          }
+        }
+      `)
+
+      const result = this.store.query(query, {}, { schema })
+
+      expect(result).to.eql({
+        todos: {
+          theTotalCount: 1,
+        },
+        wooUser: {
+          id: '10',
+          fullName: 'John Smith',
+        },
+      })
+    })
+
+    it('should be able to query connections', function () {
+      const query = parse(`
+        query {
+          todos {
+            totalCount
+            edges {
+              node {
+                id
+                user: author {
+                  id
+                  fullName: name
+                }
+                label
+              }
+            }
+          }
+        }
+      `)
+
+      const result = this.store.query(query, {}, { schema })
+
+      expect(result).to.eql({
+        todos: {
+          totalCount: 1,
+          edges: [{
+            node: {
+              id: '1',
+              label: 'Initial todo',
+              user: {
+                id: '10',
+                fullName: 'John Smith',
+              },
+            },
+          }, {
+            node: {
+              id: '5',
+              label: 'Initial todo #2',
+              user: {
+                id: '10',
+                fullName: 'John Smith',
+              },
+            },
+          }],
+        },
+      })
+    })
+
+  })
+
 })

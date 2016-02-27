@@ -2,6 +2,7 @@ import {TypeInfo} from 'graphql/utilities'
 import {visit} from 'graphql/language'
 import {visitWithTypeInfo} from 'graphql/language/visitor'
 import {GraphQLList} from 'graphql/type'
+import Immutable from 'immutable'
 
 import {ObjectTree} from './object-tree'
 import {ImmutableBuilder} from './immutable-builder'
@@ -30,7 +31,9 @@ export function visitAndMapImmutable(ast, tree, mapFnFactory, { schema, typeInfo
   if (!objectTree) objectTree = new ObjectTree(tree, typeInfo)
   const builder = new ImmutableBuilder(objectTree, typeInfo)
 
-  const mapFn = mapFnFactory({ objectTree, typeInfo })
+  const useKey = builder.useKey.bind(builder)
+
+  const mapFn = mapFnFactory({ objectTree, typeInfo, useKey })
 
   const visitor = {
     Field: {
@@ -55,6 +58,10 @@ export function visitAndMapImmutable(ast, tree, mapFnFactory, { schema, typeInfo
   return builder.get()
 }
 
+export function visitAndMap(ast, tree, mapFnFactory, opts) {
+  return visitAndMapImmutable(ast, tree, mapFnFactory, opts).toJS()
+}
+
 export function visitWithTree(visitor, typeInfo, objectTree) {
   return {
     enter(node) {
@@ -64,7 +71,7 @@ export function visitWithTree(visitor, typeInfo, objectTree) {
 
       const fn = getVisitFn(visitor, node.kind, /* isLeaving */ false)
 
-      if (Array.isArray(subTree) && currentType instanceof GraphQLList) {
+      if ((Array.isArray(subTree) || Immutable.List.isList(subTree)) && currentType instanceof GraphQLList) {
         if (fn) {
           fn.apply(visitor, arguments)
         }

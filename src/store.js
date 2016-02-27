@@ -1,7 +1,7 @@
 import Immutable from 'immutable'
 import {isLeafType} from 'graphql/type'
 import {TypeInfo} from 'graphql/utilities'
-import {visitAndMapImmutable} from './utils/visitor'
+import {visitAndMapImmutable, visitAndMap} from './utils/visitor'
 
 const StoreRecord = Immutable.Record({
   data: Immutable.Map(),
@@ -14,8 +14,10 @@ const NodeReference = Immutable.Record({
 })
 
 function isNode(type, data) {
+  const id = data.get ? data.get('id') : data.id
+
   // TODO check graphql type?
-  return data.id != null
+  return id != null
 }
 
 function getDataForStore(query, inData, schema, typeInfo) {
@@ -42,6 +44,27 @@ function getDataForStore(query, inData, schema, typeInfo) {
   return { data, nodes }
 }
 
+function queryStore(store, query, data, schema, typeInfo) {
+  return visitAndMap(query, data, ({ objectTree, typeInfo, useKey }) =>
+    node => {
+      const data = objectTree.getCurrent()
+      const type = typeInfo.getType()
+
+      if (node.alias) {
+        useKey(node.alias.value)
+      }
+
+      if (isNode(type, data)) {
+        return queryStore(store, node.selectionSet, store.getNode(data.get('id')), schema, typeInfo)
+      }
+
+      if (isLeafType(typeInfo.getType())) {
+        return data
+      }
+    }
+  , { schema, typeInfo })
+}
+
 export default class Store extends StoreRecord {
 
   acceptQueryResult(result, query, variables, { schema }) {
@@ -57,6 +80,13 @@ export default class Store extends StoreRecord {
     Object.keys(nodes).forEach(id => newStore.updateNode(id, nodes[id]))
 
     return newStore.asImmutable()
+  }
+
+  query(query, variables, { schema }) {
+    const typeInfo = new TypeInfo(schema)
+    const data = queryStore(this, query, this.data, schema, typeInfo)
+
+    return data
   }
 
   getNode(id) {
