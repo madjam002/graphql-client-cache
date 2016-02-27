@@ -2,6 +2,7 @@ import Immutable from 'immutable'
 import {isLeafType} from 'graphql/type'
 import {TypeInfo} from 'graphql/utilities'
 import {visitAndMapImmutable, visitAndMap, DataTypes} from './utils/visitor'
+import {getStorageKey} from './utils/storage-key'
 
 const StoreRecord = Immutable.Record({
   data: Immutable.Map(),
@@ -20,30 +21,10 @@ function isNode(type, data) {
   return id != null
 }
 
-function getStorageKey(node, variables) {
-  const baseName = node.name.value
-
-  if (node.arguments.length === 0) {
-    return baseName
-  }
-
-  const args = {}
-
-  node.arguments.forEach(argument => {
-    if (argument.value.kind === 'Variable') {
-      args[argument.name.value] = variables[argument.value.name.value]
-    } else {
-      args[argument.name.value] = argument.value.value
-    }
-  })
-
-  return baseName + '|' + JSON.stringify(args)
-}
-
 function getDataForStore(query, variables, inData, schema, typeInfo) {
   const nodes = {}
 
-  const data = visitAndMapImmutable(query, inData, ({ objectTree, typeInfo, useKey }) =>
+  const data = visitAndMapImmutable(query, variables, inData, ({ objectTree, typeInfo, useKey }) =>
     node => {
       const data = objectTree.getCurrent()
       const type = typeInfo.getType()
@@ -67,8 +48,8 @@ function getDataForStore(query, variables, inData, schema, typeInfo) {
   return { data, nodes }
 }
 
-function queryStore(store, query, data, schema, typeInfo) {
-  return visitAndMap(query, data, ({ objectTree, typeInfo, useKey }) =>
+function queryStore(store, query, variables, data, schema, typeInfo) {
+  return visitAndMap(query, variables, data, ({ objectTree, typeInfo, useKey }) =>
     node => {
       const data = objectTree.getCurrent()
       const type = typeInfo.getType()
@@ -78,14 +59,14 @@ function queryStore(store, query, data, schema, typeInfo) {
       }
 
       if (isNode(type, data)) {
-        return queryStore(store, node.selectionSet, store.getNode(data.get('id')), schema, typeInfo)
+        return queryStore(store, node.selectionSet, variables, store.getNode(data.get('id')), schema, typeInfo)
       }
 
       if (isLeafType(typeInfo.getType())) {
         return data
       }
     }
-  , { schema, typeInfo })
+  , { schema, typeInfo, dataType: DataTypes.STORE_DATA })
 }
 
 export default class Store extends StoreRecord {
@@ -107,7 +88,7 @@ export default class Store extends StoreRecord {
 
   query(query, variables, { schema }) {
     const typeInfo = new TypeInfo(schema)
-    const data = queryStore(this, query, this.data, schema, typeInfo)
+    const data = queryStore(this, query, variables, this.data, schema, typeInfo)
 
     return data
   }

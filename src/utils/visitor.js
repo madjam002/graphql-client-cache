@@ -28,9 +28,9 @@ export function visitWithTypesAndTree(ast, tree, visitorFn, { schema }) {
   return visitTree(visitor, ast, objectTree, typeInfo)
 }
 
-export function visitAndMapImmutable(ast, tree, mapFnFactory, { schema, typeInfo, objectTree, dataType }) {
+export function visitAndMapImmutable(ast, variables, tree, mapFnFactory, { schema, typeInfo, objectTree, dataType }) {
   if (!typeInfo) typeInfo = new TypeInfo(schema)
-  if (!objectTree) objectTree = new ObjectTree(tree, dataType)
+  if (!objectTree) objectTree = new ObjectTree(tree, ast, variables, dataType)
   const builder = new ImmutableBuilder(objectTree, typeInfo)
 
   const useKey = builder.useKey.bind(builder)
@@ -60,8 +60,8 @@ export function visitAndMapImmutable(ast, tree, mapFnFactory, { schema, typeInfo
   return builder.get()
 }
 
-export function visitAndMap(ast, tree, mapFnFactory, opts) {
-  return visitAndMapImmutable(ast, tree, mapFnFactory, opts).toJS()
+export function visitAndMap(ast, variables, tree, mapFnFactory, opts) {
+  return visitAndMapImmutable(ast, variables, tree, mapFnFactory, opts).toJS()
 }
 
 export function visitWithTree(visitor, typeInfo, objectTree) {

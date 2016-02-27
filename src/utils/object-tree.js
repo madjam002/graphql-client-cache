@@ -1,4 +1,5 @@
 import {Kind} from 'graphql/language'
+import {getStorageKey} from './storage-key'
 
 export const Types = {
   STORE_DATA: 1,
@@ -6,9 +7,11 @@ export const Types = {
 }
 
 export class ObjectTree {
-  constructor(tree, type = Types.STORE_DATA) {
+  constructor(tree, query, queryVariables, type = Types.STORE_DATA) {
     this._tree = tree
     this._stack = [this._tree]
+    this._query = query
+    this._queryVariables = queryVariables
     this._type = type
   }
 
@@ -40,7 +43,14 @@ export class ObjectTree {
   enter(node) {
     if (node.kind === Kind.FIELD) {
       const current = this.getCurrent()
-      const key = this._type === Types.QUERY_RESULT && node.alias ? node.alias.value : node.name.value
+
+      let key
+
+      if (this._type === Types.QUERY_RESULT) {
+        key = node.alias ? node.alias.value : node.name.value
+      } else {
+        key = getStorageKey(node, this._queryVariables)
+      }
 
       if (current) {
         const next = current.get ? current.get(key) : current[key]

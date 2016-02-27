@@ -326,10 +326,8 @@ describe('Store', function () {
         '10': {
           id: '10',
           name: 'John Smith',
-          author: {
-            id: '10',
-            _type: 'NodeReference',
-          },
+          'name|{"type":"first"}': 'John',
+          'name|{"type":"last"}': 'Smith',
         },
       }
 
@@ -346,7 +344,7 @@ describe('Store', function () {
       }]
 
       this.initialTodos = {
-        totalCount: 1,
+        totalCount: 2,
         pageInfo: {
           hasNextPage: false,
         },
@@ -359,6 +357,9 @@ describe('Store', function () {
         }),
         data: Immutable.fromJS({
           todos: this.initialTodos,
+          'todos|{"completed":true}': {
+            totalCount: 0,
+          },
           user: {
             id: '10',
             _type: 'NodeReference',
@@ -380,7 +381,7 @@ describe('Store', function () {
 
       expect(result).to.eql({
         todos: {
-          totalCount: 1,
+          totalCount: 2,
         },
       })
     })
@@ -402,7 +403,7 @@ describe('Store', function () {
 
       expect(result).to.eql({
         todos: {
-          totalCount: 1,
+          totalCount: 2,
         },
         user: {
           id: '10',
@@ -428,7 +429,7 @@ describe('Store', function () {
 
       expect(result).to.eql({
         todos: {
-          theTotalCount: 1,
+          theTotalCount: 2,
         },
         wooUser: {
           id: '10',
@@ -460,7 +461,7 @@ describe('Store', function () {
 
       expect(result).to.eql({
         todos: {
-          totalCount: 1,
+          totalCount: 2,
           edges: [{
             node: {
               id: '1',
@@ -480,6 +481,56 @@ describe('Store', function () {
               },
             },
           }],
+        },
+      })
+    })
+
+    it('should be able to query fields with different call arguments', function () {
+      const query = parse(`
+        query($nameType: String!) {
+          user {
+            id
+            name
+            namePart: name(type: $nameType)
+          }
+          todos {
+            totalCount
+          }
+          completed: todos(completed: true) {
+            totalCount
+          }
+        }
+      `)
+
+      const result = this.store.query(query, {nameType: 'first'}, { schema })
+
+      expect(result).to.eql({
+        user: {
+          id: '10',
+          name: 'John Smith',
+          namePart: 'John',
+        },
+        todos: {
+          totalCount: 2,
+        },
+        completed: {
+          totalCount: 0,
+        },
+      })
+
+      const result2 = this.store.query(query, {nameType: 'last'}, { schema })
+
+      expect(result2).to.eql({
+        user: {
+          id: '10',
+          name: 'John Smith',
+          namePart: 'Smith',
+        },
+        todos: {
+          totalCount: 2,
+        },
+        completed: {
+          totalCount: 0,
         },
       })
     })

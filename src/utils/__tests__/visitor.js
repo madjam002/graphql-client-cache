@@ -138,7 +138,7 @@ describe('visitAndMapImmutable', function () {
   })
 
   it('should walk the tree with data and return an immutable map', function () {
-    const result = visitAndMapImmutable(this.query, this.tree, ({ objectTree, typeInfo }) =>
+    const result = visitAndMapImmutable(this.query, {}, this.tree, ({ objectTree, typeInfo }) =>
       node => {
         const data = objectTree.getCurrent()
 
@@ -154,7 +154,7 @@ describe('visitAndMapImmutable', function () {
   })
 
   it('should walk the tree with data and respect map function result', function () {
-    const result = visitAndMapImmutable(this.query, this.tree, ({ objectTree, typeInfo }) =>
+    const result = visitAndMapImmutable(this.query, {}, this.tree, ({ objectTree, typeInfo }) =>
       node => {
         const data = objectTree.getCurrent()
 
