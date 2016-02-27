@@ -8,6 +8,8 @@ import {ObjectTree} from './object-tree'
 import {ImmutableBuilder} from './immutable-builder'
 import {getVisitFn} from './visitor-util'
 
+export {Types as DataTypes} from './object-tree'
+
 export function isNode(maybeNode) {
   return maybeNode && typeof maybeNode.kind === 'string'
 }
@@ -19,16 +21,16 @@ export function visitWithTypes(ast, visitorFn, { schema }) {
 
 export function visitWithTypesAndTree(ast, tree, visitorFn, { schema }) {
   const typeInfo = new TypeInfo(schema)
-  const objectTree = new ObjectTree(tree, typeInfo)
+  const objectTree = new ObjectTree(tree)
 
   const visitor = visitorFn({ objectTree, typeInfo })
 
   return visitTree(visitor, ast, objectTree, typeInfo)
 }
 
-export function visitAndMapImmutable(ast, tree, mapFnFactory, { schema, typeInfo, objectTree }) {
+export function visitAndMapImmutable(ast, tree, mapFnFactory, { schema, typeInfo, objectTree, dataType }) {
   if (!typeInfo) typeInfo = new TypeInfo(schema)
-  if (!objectTree) objectTree = new ObjectTree(tree, typeInfo)
+  if (!objectTree) objectTree = new ObjectTree(tree, dataType)
   const builder = new ImmutableBuilder(objectTree, typeInfo)
 
   const useKey = builder.useKey.bind(builder)

@@ -1,9 +1,15 @@
 import {Kind} from 'graphql/language'
 
+export const Types = {
+  STORE_DATA: 1,
+  QUERY_RESULT: 2,
+}
+
 export class ObjectTree {
-  constructor(tree) {
+  constructor(tree, type = Types.STORE_DATA) {
     this._tree = tree
     this._stack = [this._tree]
+    this._type = type
   }
 
   getCurrent() {
@@ -34,9 +40,10 @@ export class ObjectTree {
   enter(node) {
     if (node.kind === Kind.FIELD) {
       const current = this.getCurrent()
+      const key = this._type === Types.QUERY_RESULT && node.alias ? node.alias.value : node.name.value
 
       if (current) {
-        const next = current.get ? current.get(node.name.value) : current[node.name.value]
+        const next = current.get ? current.get(key) : current[key]
 
         this._stack.push(next)
         return next

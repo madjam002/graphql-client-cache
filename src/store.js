@@ -1,7 +1,7 @@
 import Immutable from 'immutable'
 import {isLeafType} from 'graphql/type'
 import {TypeInfo} from 'graphql/utilities'
-import {visitAndMapImmutable, visitAndMap} from './utils/visitor'
+import {visitAndMapImmutable, visitAndMap, DataTypes} from './utils/visitor'
 
 const StoreRecord = Immutable.Record({
   data: Immutable.Map(),
@@ -20,16 +20,39 @@ function isNode(type, data) {
   return id != null
 }
 
-function getDataForStore(query, inData, schema, typeInfo) {
+function getStorageKey(node, variables) {
+  const baseName = node.name.value
+
+  if (node.arguments.length === 0) {
+    return baseName
+  }
+
+  const args = {}
+
+  node.arguments.forEach(argument => {
+    if (argument.value.kind === 'Variable') {
+      args[argument.name.value] = variables[argument.value.name.value]
+    } else {
+      args[argument.name.value] = argument.value.value
+    }
+  })
+
+  return baseName + '|' + JSON.stringify(args)
+}
+
+function getDataForStore(query, variables, inData, schema, typeInfo) {
   const nodes = {}
 
-  const data = visitAndMapImmutable(query, inData, ({ objectTree, typeInfo }) =>
+  const data = visitAndMapImmutable(query, inData, ({ objectTree, typeInfo, useKey }) =>
     node => {
       const data = objectTree.getCurrent()
       const type = typeInfo.getType()
 
+      const key = getStorageKey(node, variables)
+      useKey(key)
+
       if (isNode(type, data)) {
-        const nodeData = getDataForStore(node.selectionSet, data, schema, typeInfo)
+        const nodeData = getDataForStore(node.selectionSet, variables, data, schema, typeInfo)
         nodes[data.id] = nodeData.data
         Object.assign(nodes, nodeData.nodes)
         return new NodeReference({ id: data.id })
@@ -39,7 +62,7 @@ function getDataForStore(query, inData, schema, typeInfo) {
         return data
       }
     }
-  , { schema, typeInfo })
+  , { schema, typeInfo, dataType: DataTypes.QUERY_RESULT })
 
   return { data, nodes }
 }
@@ -71,7 +94,7 @@ export default class Store extends StoreRecord {
     const newStore = this.asMutable()
     const typeInfo = new TypeInfo(schema)
 
-    const { nodes, data } = getDataForStore(query, result, schema, typeInfo)
+    const { nodes, data } = getDataForStore(query, variables, result, schema, typeInfo)
 
     newStore.set('data', newStore.get('data').mergeDeep(
       data,

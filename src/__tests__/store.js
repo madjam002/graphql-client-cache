@@ -232,6 +232,75 @@ describe('Store', function () {
       })
     })
 
+    it('should store multiple calls with different arguments and variables', function () {
+      const query = parse(`
+        query($nameType: String!) {
+          user {
+            id
+            name
+            anotherName: name(type: $nameType)
+            dateOfBirth
+          }
+          todos {
+            totalCount
+          }
+          completed: todos(completed: true) {
+            totalCount
+          }
+          currentTime
+          actualTime: currentTime
+        }
+      `)
+
+      const variables = { nameType: 'first' }
+
+      const result = {
+        user: {
+          id: 10,
+          name: 'John Smith',
+          anotherName: 'John',
+          dateOfBirth: '2015-03-10 10:00',
+        },
+        todos: {
+          totalCount: 6,
+        },
+        completed: {
+          totalCount: 2,
+        },
+        currentTime: '2016-01-01 00:00',
+        actualTime: '2016-01-01 00:00',
+      }
+
+      const updatedStore = this.store.acceptQueryResult(result, query, variables, { schema })
+
+      expect(updatedStore.toJS()).to.eql({
+        nodes: {
+          ...this.initialNodes,
+          '10': {
+            id: 10,
+            name: 'John Smith',
+            'name|{"type":"first"}': 'John',
+            dateOfBirth: '2015-03-10 10:00',
+          },
+        },
+        data: {
+          todos: {
+            edges: this.initialTodos.edges,
+            pageInfo: this.initialTodos.pageInfo,
+            totalCount: 6,
+          },
+          'todos|{"completed":true}': {
+            totalCount: 2,
+          },
+          user: {
+            id: 10,
+            _type: 'NodeReference',
+          },
+          currentTime: '2016-01-01 00:00',
+        },
+      })
+    })
+
   })
 
   describe('query', function () {
