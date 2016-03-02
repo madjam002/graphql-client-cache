@@ -47,12 +47,6 @@ export function visitAndMapImmutable(query, ast, variables, tree, mapFnFactory, 
         return null
       },
     },
-    enterIndex(index) {
-      builder.enterIndex(index)
-    },
-    leaveIndex() {
-      builder.pop()
-    },
   }
 
   visitTree(visitor, query, ast, variables, objectTree, typeInfo)
@@ -83,6 +77,7 @@ export function visitTree(visitor, query, ast, variables, objectTree, typeInfo) 
       const currentType = typeInfo.getType()
 
       const fn = getVisitFn(visitor, node.kind, /* isLeaving */ false)
+      const leaveFn = getVisitFn(visitor, node.kind, /* isLeaving */ true)
 
       if ((Array.isArray(subTree) || Immutable.List.isList(subTree)) && currentType instanceof GraphQLList) {
         if (fn) {
@@ -91,15 +86,19 @@ export function visitTree(visitor, query, ast, variables, objectTree, typeInfo) 
 
         subTree.forEach((treePart, index) => {
           objectTree.enterIndex(index)
-          if (visitor.enterIndex) visitor.enterIndex(index)
+
+          let enterResult
+          if (fn) {
+            enterResult = fn.call(visitor, node)
+          }
 
           visitTree(visitor, query, node.selectionSet, variables, objectTree, typeInfo)
 
-          if (visitor.leaveIndex) visitor.leaveIndex(index)
+          if (enterResult !== false && leaveFn) leaveFn.call(visitor, node)
+
           objectTree.pop()
         })
 
-        const leaveFn = getVisitFn(visitor, node.kind, /* isLeaving */ true)
         if (leaveFn) {
           leaveFn.apply(visitor, arguments)
         }

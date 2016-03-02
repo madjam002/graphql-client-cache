@@ -21,6 +21,9 @@ const User = new GraphQLObjectType({
     dateOfBirth: {
       type: GraphQLString,
     },
+    friends: {
+      type: new GraphQLList(User),
+    },
   }),
 })
 

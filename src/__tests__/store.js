@@ -58,15 +58,24 @@ describe('Store', function () {
             id
             name
             dateOfBirth
+            friends { id }
           }
         }
       `)
 
       const result = {
         user: {
-          id: 10,
+          id: '10',
           name: 'John Smith',
           dateOfBirth: '2015-03-10 10:00',
+          friends: [
+            { id: '11' },
+            { id: '12' },
+            { id: '13' },
+            { id: '14' },
+            { id: '15' },
+            { id: '16' },
+          ],
         },
       }
 
@@ -76,15 +85,29 @@ describe('Store', function () {
         nodes: {
           ...this.initialNodes,
           '10': {
-            id: 10,
+            id: '10',
             name: 'John Smith',
             dateOfBirth: '2015-03-10 10:00',
+            friends: [
+              { id: '11', _type: 'NodeReference' },
+              { id: '12', _type: 'NodeReference' },
+              { id: '13', _type: 'NodeReference' },
+              { id: '14', _type: 'NodeReference' },
+              { id: '15', _type: 'NodeReference' },
+              { id: '16', _type: 'NodeReference' },
+            ],
           },
+          '11': { id: '11' },
+          '12': { id: '12' },
+          '13': { id: '13' },
+          '14': { id: '14' },
+          '15': { id: '15' },
+          '16': { id: '16' },
         },
         data: {
           todos: this.initialTodos,
           user: {
-            id: 10,
+            id: '10',
             _type: 'NodeReference',
           },
         },

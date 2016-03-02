@@ -54,6 +54,15 @@ describe('visitWithTree', function () {
               name: 'John Smith',
             },
           },
+        }, {
+          node: {
+            id: 5,
+            label: 'Test 3',
+            author: {
+              id: 10,
+              name: 'John Smith',
+            },
+          },
         }],
       },
     }
@@ -75,6 +84,7 @@ describe('visitWithTree', function () {
       { type: 'enter', field: 'todos', value: tree.todos },
       { type: 'enter', field: 'edges', value: tree.todos.edges },
 
+      { type: 'enter', field: 'edges', value: tree.todos.edges[0] },
       { type: 'enter', field: 'node', value: tree.todos.edges[0].node },
       { type: 'enter', field: 'id', value: tree.todos.edges[0].node.id },
       { type: 'leave', field: 'id', value: tree.todos.edges[0].node.id },
@@ -87,19 +97,37 @@ describe('visitWithTree', function () {
       { type: 'leave', field: 'name', value: tree.todos.edges[0].node.author.name },
       { type: 'leave', field: 'author', value: tree.todos.edges[0].node.author },
       { type: 'leave', field: 'node', value: tree.todos.edges[0].node },
+      { type: 'leave', field: 'edges', value: tree.todos.edges[0] },
 
+      { type: 'enter', field: 'edges', value: tree.todos.edges[1] },
       { type: 'enter', field: 'node', value: tree.todos.edges[1].node },
       { type: 'enter', field: 'id', value: tree.todos.edges[1].node.id },
       { type: 'leave', field: 'id', value: tree.todos.edges[1].node.id },
       { type: 'enter', field: 'label', value: tree.todos.edges[1].node.label },
       { type: 'leave', field: 'label', value: tree.todos.edges[1].node.label },
-      { type: 'enter', field: 'author', value: tree.todos.edges[0].node.author },
-      { type: 'enter', field: 'id', value: tree.todos.edges[0].node.author.id },
-      { type: 'leave', field: 'id', value: tree.todos.edges[0].node.author.id },
-      { type: 'enter', field: 'name', value: tree.todos.edges[0].node.author.name },
-      { type: 'leave', field: 'name', value: tree.todos.edges[0].node.author.name },
-      { type: 'leave', field: 'author', value: tree.todos.edges[0].node.author },
+      { type: 'enter', field: 'author', value: tree.todos.edges[1].node.author },
+      { type: 'enter', field: 'id', value: tree.todos.edges[1].node.author.id },
+      { type: 'leave', field: 'id', value: tree.todos.edges[1].node.author.id },
+      { type: 'enter', field: 'name', value: tree.todos.edges[1].node.author.name },
+      { type: 'leave', field: 'name', value: tree.todos.edges[1].node.author.name },
+      { type: 'leave', field: 'author', value: tree.todos.edges[1].node.author },
       { type: 'leave', field: 'node', value: tree.todos.edges[1].node },
+      { type: 'leave', field: 'edges', value: tree.todos.edges[1] },
+
+      { type: 'enter', field: 'edges', value: tree.todos.edges[2] },
+      { type: 'enter', field: 'node', value: tree.todos.edges[2].node },
+      { type: 'enter', field: 'id', value: tree.todos.edges[2].node.id },
+      { type: 'leave', field: 'id', value: tree.todos.edges[2].node.id },
+      { type: 'enter', field: 'label', value: tree.todos.edges[2].node.label },
+      { type: 'leave', field: 'label', value: tree.todos.edges[2].node.label },
+      { type: 'enter', field: 'author', value: tree.todos.edges[2].node.author },
+      { type: 'enter', field: 'id', value: tree.todos.edges[2].node.author.id },
+      { type: 'leave', field: 'id', value: tree.todos.edges[2].node.author.id },
+      { type: 'enter', field: 'name', value: tree.todos.edges[2].node.author.name },
+      { type: 'leave', field: 'name', value: tree.todos.edges[2].node.author.name },
+      { type: 'leave', field: 'author', value: tree.todos.edges[2].node.author },
+      { type: 'leave', field: 'node', value: tree.todos.edges[2].node },
+      { type: 'leave', field: 'edges', value: tree.todos.edges[2] },
 
       { type: 'leave', field: 'edges', value: tree.todos.edges },
       { type: 'enter', field: 'totalCount', value: tree.todos.totalCount },
@@ -176,9 +204,13 @@ describe('visitAndMapImmutable', function () {
   })
 
   it('should walk the tree with data and return an immutable map', function () {
+    const calls = []
+
     const result = visitAndMapImmutable(this.query, this.query, {}, this.tree, ({ objectTree, typeInfo }) =>
       node => {
         const data = objectTree.getCurrent()
+
+        calls.push(node.name.value)
 
         if (isLeafType(typeInfo.getType())) {
           return data
@@ -189,6 +221,40 @@ describe('visitAndMapImmutable', function () {
     expect(result.toJS()).to.eql({
       todos: this.tree.todos,
     })
+
+    expect(calls).to.eql([
+      'todos',
+      'edges',
+
+      'edges',
+      'node',
+      'id',
+      'author',
+      'id',
+      'name',
+      'label',
+      'cursor',
+
+      'edges',
+      'node',
+      'id',
+      'author',
+      'id',
+      'name',
+      'label',
+      'cursor',
+
+      'edges',
+      'node',
+      'id',
+      'author',
+      'id',
+      'name',
+      'label',
+      'cursor',
+
+      'totalCount',
+    ])
   })
 
   it('should walk the tree with data and follow inline fragments', function () {
@@ -285,6 +351,10 @@ describe('visitAndMapImmutable', function () {
           })
         }
 
+        if (data.node && data.node.id === 5) {
+          return Immutable.Map({ 'foo': 'bar' })
+        }
+
         if (isLeafType(typeInfo.getType())) {
           return data
         }
@@ -307,11 +377,7 @@ describe('visitAndMapImmutable', function () {
           },
           cursor: 4,
         }, {
-          node: {
-            id: 5,
-            _type: 'Node',
-          },
-          cursor: 5,
+          foo: 'bar',
         }],
       },
     })

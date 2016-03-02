@@ -47,7 +47,9 @@ export class ImmutableBuilder {
     const type = this.typeInfo.getType()
     const data = this.objectTree.getCurrent()
     const curr = this.getCurrent()
-    const key = this.nextKey || node.name.value
+    const key = this.objectTree.getIndex() != null
+      ? this.objectTree.getIndex()
+      : this.nextKey || node.name.value
 
     this.nextKey = null
 

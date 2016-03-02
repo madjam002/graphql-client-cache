@@ -23,7 +23,7 @@ export class ObjectTree {
     const current = this.getCurrent()
 
     this._index = index
-    this._indexAt = this._stack.length + 1
+    this._indexAt = this._stack.length
     this._stack.push(current.get ? current.get(index) : current[index])
   }
 
