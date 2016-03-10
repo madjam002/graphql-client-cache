@@ -422,6 +422,33 @@ describe('Store', function () {
       })
     })
 
+    it('should handle null values', function () {
+      const query = parse(`
+        query {
+          user {
+            id
+            name
+          }
+        }
+      `)
+
+      const result = {
+        user: null,
+      }
+
+      const updatedStore = this.store.acceptQueryResult(result, query, {}, { schema })
+
+      expect(updatedStore.toJS()).to.eql({
+        nodes: {
+          ...this.initialNodes,
+        },
+        data: {
+          todos: this.initialTodos,
+          user: null,
+        },
+      })
+    })
+
   })
 
 })

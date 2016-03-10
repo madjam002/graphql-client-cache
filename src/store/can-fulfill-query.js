@@ -9,7 +9,11 @@ export default function canFulfillQuery(store, query, ast, variables, data, sche
       const data = objectTree.getCurrent()
       const type = typeInfo.getType()
 
-      if (data == null) {
+      if (data === null) {
+        return false
+      }
+
+      if (data === undefined) {
         canFulfill = false
         return false
       }

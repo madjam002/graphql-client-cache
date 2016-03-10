@@ -126,6 +126,27 @@ describe('Store', function () {
       expect(result).to.be.false
     })
 
+    it('should return true when dealing with null values appropriately', function () {
+      const query = parse(`
+        query {
+          user {
+            id
+            name
+          }
+        }
+      `)
+
+      const store = new Store({
+        data: Immutable.fromJS({
+          user: null,
+        }),
+      })
+
+      const result = store.canFulfillQuery(query, {}, { schema })
+
+      expect(result).to.be.true
+    })
+
   })
 
 })

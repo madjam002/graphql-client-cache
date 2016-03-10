@@ -69,9 +69,12 @@ export class ImmutableBuilder {
       if ((Array.isArray(data) || Immutable.List.isList(data)) && type instanceof GraphQLList) {
         curr.set(key, Immutable.List().asMutable())
         this.push(key, curr.get(key))
-      } else {
+      } else if (data != null) {
         curr.set(key, Immutable.Map({}).asMutable())
         this.push(key, curr.get(key))
+      } else {
+        curr.set(key, data)
+        return false
       }
 
       return
