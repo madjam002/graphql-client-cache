@@ -1,5 +1,5 @@
 import {Kind} from 'graphql/language'
-import {getStorageKey} from './storage-key'
+import {getStorageKey} from '../utils/storage-key'
 
 export const Types = {
   STORE_DATA: 1,

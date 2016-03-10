@@ -2,7 +2,7 @@ import {parse} from 'graphql/language'
 import {isLeafType} from 'graphql/type'
 import {expect} from 'chai'
 import Immutable from 'immutable'
-import {visitWithTree, visitAndMapImmutable} from '../visitor'
+import {visitWithTree, visitAndMapImmutable} from '../'
 
 import schema from '../../../test/schema'
 
