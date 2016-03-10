@@ -8,7 +8,7 @@ export class ImmutableBuilder {
     this._keyStack = [null]
 
     this.objectTree = objectTree
-    this.typeInfo = typeInfo
+    this._typeInfo = [typeInfo]
   }
 
   push(key, value) {
@@ -25,6 +25,10 @@ export class ImmutableBuilder {
     return this._tree.asImmutable()
   }
 
+  getTypeInfo() {
+    return this._typeInfo[this._typeInfo.length - 1]
+  }
+
   getCurrent() {
     return this._stack[this._stack.length - 1]
   }
@@ -37,6 +41,14 @@ export class ImmutableBuilder {
     this.nextKey = key
   }
 
+  pushTypeInfo(typeInfo) {
+    this._typeInfo.push(typeInfo)
+  }
+
+  popTypeInfo() {
+    this._typeInfo.pop()
+  }
+
   enterIndex(index) {
     const curr = this.getCurrent()
     curr.set(index, Immutable.Map().asMutable())
@@ -44,7 +56,7 @@ export class ImmutableBuilder {
   }
 
   enter(node, mapRes) {
-    const type = this.typeInfo.getType()
+    const type = this.getTypeInfo().getType()
     const data = this.objectTree.getCurrent()
     const curr = this.getCurrent()
     const key = this.objectTree.getIndex() != null

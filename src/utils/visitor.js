@@ -18,9 +18,7 @@ export function visitWithTree(query, ast, variables, tree, visitorFn, { schema, 
   if (!typeInfo) typeInfo = new TypeInfo(schema)
   const objectTree = new ObjectTree(tree, ast, variables, dataType)
 
-  const visitor = visitorFn({ objectTree, typeInfo })
-
-  return visitTree(visitor, query, ast, variables, objectTree, typeInfo)
+  return visitTree(visitorFn, query, ast, variables, objectTree, typeInfo, schema)
 }
 
 export function visitAndMapImmutable(query, ast, variables, tree, mapFnFactory, { schema, typeInfo, objectTree, dataType }) {
@@ -30,26 +28,33 @@ export function visitAndMapImmutable(query, ast, variables, tree, mapFnFactory, 
 
   const useKey = builder.useKey.bind(builder)
 
-  const mapFn = mapFnFactory({ objectTree, typeInfo, useKey })
+  const visitorFn = ({ objectTree, typeInfo }) => {
+    const mapFn = mapFnFactory({ objectTree, typeInfo, useKey })
 
-  const visitor = {
-    Field: {
-      enter(node) {
-        const res = mapFn(...arguments)
-        return builder.enter(node, res)
+    builder.pushTypeInfo(typeInfo)
+
+    return {
+      Field: {
+        enter(node) {
+          const res = mapFn(...arguments)
+          return builder.enter(node, res)
+        },
+        leave(node) {
+          builder.leave(node)
+        },
       },
-      leave(node) {
-        builder.leave(node)
+      FragmentDefinition: {
+        enter(node) {
+          return null
+        },
       },
-    },
-    FragmentDefinition: {
-      enter(node) {
-        return null
+      done() {
+        builder.popTypeInfo()
       },
-    },
+    }
   }
 
-  visitTree(visitor, query, ast, variables, objectTree, typeInfo)
+  visitTree(visitorFn, query, ast, variables, objectTree, typeInfo, schema)
 
   return builder.get()
 }
@@ -58,7 +63,9 @@ export function visitAndMap(query, ast, variables, tree, mapFnFactory, opts) {
   return visitAndMapImmutable(query, ast, variables, tree, mapFnFactory, opts).toJS()
 }
 
-export function visitTree(visitor, query, ast, variables, objectTree, typeInfo) {
+export function visitTree(visitorFn, query, ast, variables, objectTree, typeInfo, schema) {
+  const visitor = visitorFn({ objectTree, typeInfo })
+
   const treeVisitor = {
     enter(node) {
       const subTree = objectTree.enter(node)
@@ -69,8 +76,9 @@ export function visitTree(visitor, query, ast, variables, objectTree, typeInfo) 
 
         if (fragments.length > 0) {
           const fragment = fragments[0]
-
-          visitTree(visitor, query, fragment.selectionSet, variables, objectTree, typeInfo)
+          const childTypeInfo = new TypeInfo(schema)
+          childTypeInfo._typeStack = [schema.getType(fragment.typeCondition.name.value)]
+          visitTree(visitorFn, query, fragment.selectionSet, variables, objectTree, childTypeInfo, schema)
         }
       }
 
@@ -92,9 +100,14 @@ export function visitTree(visitor, query, ast, variables, objectTree, typeInfo) 
             enterResult = fn.call(visitor, node)
           }
 
-          visitTree(visitor, query, node.selectionSet, variables, objectTree, typeInfo)
+          if (enterResult === false) {
+            objectTree.pop()
+            return
+          }
 
-          if (enterResult !== false && leaveFn) leaveFn.call(visitor, node)
+          visitTree(visitorFn, query, node.selectionSet, variables, objectTree, typeInfo, schema)
+
+          if (leaveFn) leaveFn.call(visitor, node)
 
           objectTree.pop()
         })
@@ -130,5 +143,9 @@ export function visitTree(visitor, query, ast, variables, objectTree, typeInfo) 
     },
   }
 
-  return visit(ast, visitWithTypeInfo(typeInfo, treeVisitor))
+  const visitResult = visit(ast, visitWithTypeInfo(typeInfo, treeVisitor))
+
+  if (visitor.done) visitor.done()
+
+  return visitResult
 }

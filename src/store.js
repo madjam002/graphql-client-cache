@@ -73,8 +73,8 @@ function queryStore(store, query, ast, variables, data, schema, typeInfo) {
 function canFulfillQuery(store, query, ast, variables, data, schema, typeInfo) {
   let canFulfill = true
 
-  visitAndMap(query, ast, variables, data, ({ objectTree, typeInfo, useKey }) =>
-    node => {
+  visitWithTree(query, ast, variables, data, ({objectTree}) => ({
+    Field(node) {
       const data = objectTree.getCurrent()
       const type = typeInfo.getType()
 
@@ -84,14 +84,17 @@ function canFulfillQuery(store, query, ast, variables, data, schema, typeInfo) {
       }
 
       if (isNode(type, data)) {
-        const nodeCan = queryStore(store, query, node.selectionSet, variables, store.getNode(data.get('id')), schema, typeInfo)
+        const nodeCan = canFulfillQuery(store, query, node.selectionSet, variables, store.getNode(data.get('id')), schema, typeInfo)
         if (!nodeCan) {
           canFulfill = false
         }
         return false
       }
-    }
-  , { schema, typeInfo, dataType: DataTypes.STORE_DATA })
+    },
+    FragmentDefinition() {
+      return null
+    },
+  }), { schema, typeInfo, dataType: DataTypes.STORE_DATA })
 
   return canFulfill
 }

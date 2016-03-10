@@ -662,6 +662,14 @@ describe('Store', function () {
 
     beforeEach(function () {
       this.initialNodes = {
+        '0': {
+          id: '0',
+          label: 'Initial todo',
+          author: {
+            id: '10',
+            _type: 'NodeReference',
+          },
+        },
         '1': {
           id: '1',
           label: 'Initial todo',
@@ -687,6 +695,11 @@ describe('Store', function () {
       }
 
       this.initialEdges = [{
+        node: {
+          id: '0',
+          _type: 'NodeReference',
+        },
+      }, {
         node: {
           id: '1',
           _type: 'NodeReference',
