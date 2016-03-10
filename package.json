@@ -10,7 +10,9 @@
     "test": "npm run unit && npm run lint",
     "unit": "mocha $npm_package_options_mocha",
     "unit-watch": "mocha -w $npm_package_options_mocha",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "watch": "babel -w --out-dir lib src",
+    "build": "babel --out-dir lib src"
   },
   "author": "Jamie Greeff <jamiegreeff+git@gmail.com>",
   "license": "MIT",
