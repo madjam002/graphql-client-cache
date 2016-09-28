@@ -1,6 +1,10 @@
 graphql-client-cache
 ====================
 
+**Do not use!! This has been replaced by [graphql-cache](https://github.com/madjam002/graphql-cache)**
+
+----
+
 An experimental GraphQL client cache powered by ImmutableJS.
 
 This is pretty much a code dump from a weekend I had of just experimenting with a few ideas.
